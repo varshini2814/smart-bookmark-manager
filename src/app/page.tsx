@@ -48,11 +48,13 @@ export default function Home() {
 
   useEffect(() => { if (user) fetchBookmarks(); }, [user]);
 
+  // Fixed: Realtime updates - use void to explicitly avoid returning the Promise
   useEffect(() => {
     if (!user) return;
     const channel = supabase.channel("bookmarks-realtime").on("postgres_changes", {
       event: "*", schema: "public", table: "bookmarks", filter: `user_id=eq.${user.id}`,
-    }, () => fetchBookmarks()).subscribe();
+    }, () => fetchBookmarks());
+    void channel.subscribe(); // Explicitly void to prevent TypeScript error
     return () => supabase.removeChannel(channel);
   }, [user]);
 
@@ -112,7 +114,7 @@ export default function Home() {
         <div className="flex justify-between items-center mb-8 relative">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Hi, <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent capitalize">{userName}</span><span className="text-white">👋</span></h1>
-            <p className="text-white-400 text-sm">Welcome to Smart Bookmark Manager</p>
+            <p className="text-gray-400 text-sm">Welcome to Smart Bookmark Manager</p>
           </div>
           <div className="relative" ref={menuRef}>
             <button onClick={() => setMenuOpen(!menuOpen)} className="text-2xl px-4 py-2 rounded-xl hover:bg-white/20 hover:shadow-lg transition-all duration-300 animate-pulse">⋮</button>
@@ -129,8 +131,8 @@ export default function Home() {
           </div>
         </div>
         <div className="mb-15">
-          <input type="text" placeholder="Enter your Bookmark Title" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-lavender-900 text-black border border-purple-600 p-4 w-full rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:shadow-lg transition-all duration-300" />
-          <input type="text" placeholder="Paste here Bookmark URL" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-lavender-900 text-black border border-purple-600 p-4 w-full rounded-xl mb-8 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:shadow-lg transition-all duration-300" />
+          <input type="text" placeholder="Enter your Bookmark Title" value={title} onChange={(e) => setTitle(e.target.value)} className="bg-purple-900 text-black border border-purple-600 p-4 w-full rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:shadow-lg transition-all duration-300" />
+          <input type="text" placeholder="Paste here Bookmark URL" value={url} onChange={(e) => setUrl(e.target.value)} className="bg-purple-900 text-black border border-purple-600 p-4 w-full rounded-xl mb-8 focus:outline-none focus:ring-2 focus:ring-purple-400 focus:shadow-lg transition-all duration-300" />
           <button onClick={addBookmark} className="w-full bg-gradient-to-r from-purple-500 to-indigo-500 py-3 rounded-xl font-semibold hover:scale-[1.02] hover:shadow-lg transition-all duration-300 shadow-xl flex items-center justify-center">➕ Add Bookmark</button>
         </div>
         <div>
