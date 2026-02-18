@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 
 type Bookmark = { id: string; title: string; url: string; };
@@ -25,16 +25,25 @@ export default function Home() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  useEffect(() => {
-    const generateParticles = () => setParticles([...Array(20)].map((_, i) => ({
-      left: `${Math.random() * 100}%`, top: `${Math.random() * 100}%`,
-      animationDelay: `${Math.random() * 2}s`, animationDuration: `${2 + Math.random() * 2}s`,
+  // Optimized particle generation to avoid unnecessary re-runs
+  const generateParticles = useCallback(() => {
+    setParticles([...Array(20)].map((_, i) => ({
+      left: `${Math.random() * 100}%`,
+      top: `${Math.random() * 100}%`,
+      animationDelay: `${Math.random() * 2}s`,
+      animationDuration: `${2 + Math.random() * 2}s`,
     })));
-    generateParticles();
   }, []);
 
   useEffect(() => {
-    const getUser = async () => { const { data } = await supabase.auth.getUser(); setUser(data.user); };
+    generateParticles();
+  }, [generateParticles]);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      setUser(data.user);
+    };
     getUser();
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => setUser(session?.user ?? null));
     return () => authListener.subscription.unsubscribe();
@@ -46,38 +55,41 @@ export default function Home() {
     if (data) setBookmarks(data);
   };
 
-  useEffect(() => { if (user) fetchBookmarks(); }, [user]);
+  useEffect(() => {
+    if (user) fetchBookmarks();
+  }, [user]);
 
-  // Fixed: Realtime updates - use void to explicitly avoid returning the Promise
- useEffect(() => {
-  if (!user) return;
+  // Fixed: Real-time updates for bookmarks - properly handles channel subscription and cleanup to avoid TypeScript errors
+  useEffect(() => {
+    if (!user) return;
 
-  const channel = supabase
-    .channel('bookmarks_changes')
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'bookmarks',
-        filter: `user_id=eq.${user.id}`,
-      },
-      (payload) => {
-        console.log('Change received!', payload);
-        fetchBookmarks(); // Refresh bookmarks on any change
-      }
-    )
-    .subscribe();
+    const channel = supabase
+      .channel('bookmarks_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookmarks',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Change received!', payload);
+          fetchBookmarks(); // Refresh bookmarks on any change
+        }
+      )
+      .subscribe();
 
-  return () => {
-    supabase.removeChannel(channel); // Properly unsubscribe
-  };
-}, [user, supabase, fetchBookmarks]);
+    return () => {
+      supabase.removeChannel(channel); // Properly unsubscribe to prevent memory leaks
+    };
+  }, [user, supabase, fetchBookmarks]);
 
   const addBookmark = async () => {
     if (!title || !url || !user) return;
     await supabase.from("bookmarks").insert([{ title, url, user_id: user.id }]);
-    setTitle(""); setUrl("");
+    setTitle("");
+    setUrl("");
   };
 
   const handleCheckbox = (id: string) => setSelected(prev => prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]);
@@ -85,11 +97,16 @@ export default function Home() {
   const deleteSelected = async () => {
     if (selected.length === 0 || !user) return;
     await supabase.from("bookmarks").delete().in("id", selected);
-    setSelected([]); setMenuOpen(false); fetchBookmarks();
+    setSelected([]);
+    setMenuOpen(false);
+    fetchBookmarks();
   };
 
   const handleLogin = async () => await supabase.auth.signInWithOAuth({ provider: "google" });
-  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); };
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setUser(null);
+  };
 
   if (!user) {
     return (
