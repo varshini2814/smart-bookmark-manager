@@ -88,6 +88,7 @@ export default function Home() {
   const addBookmark = async () => {
     if (!title || !url || !user) return;
     await supabase.from("bookmarks").insert([{ title, url, user_id: user.id }]);
+     fetchBookmarks();
     setTitle("");
     setUrl("");
   };
