@@ -84,11 +84,11 @@ export default function Home() {
       supabase.removeChannel(channel); // Properly unsubscribe to prevent memory leaks
     };
   }, [user, supabase, fetchBookmarks]);
-
+  
   const addBookmark = async () => {
     if (!title || !url || !user) return;
     await supabase.from("bookmarks").insert([{ title, url, user_id: user.id }]);
-     fetchBookmarks();
+    fetchBookmarks();  // Add this line to fetch data immediately
     setTitle("");
     setUrl("");
   };
