@@ -49,14 +49,30 @@ export default function Home() {
   useEffect(() => { if (user) fetchBookmarks(); }, [user]);
 
   // Fixed: Realtime updates - use void to explicitly avoid returning the Promise
-  useEffect(() => {
-    if (!user) return;
-    const channel = supabase.channel("bookmarks-realtime").on("postgres_changes", {
-      event: "*", schema: "public", table: "bookmarks", filter: `user_id=eq.${user.id}`,
-    }, () => fetchBookmarks());
-    void channel.subscribe(); // Explicitly void to prevent TypeScript error
-    return () => supabase.removeChannel(channel);
-  }, [user]);
+ useEffect(() => {
+  if (!user) return;
+
+  const channel = supabase
+    .channel('bookmarks_changes')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bookmarks',
+        filter: `user_id=eq.${user.id}`,
+      },
+      (payload) => {
+        console.log('Change received!', payload);
+        fetchBookmarks(); // Refresh bookmarks on any change
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel); // Properly unsubscribe
+  };
+}, [user, supabase, fetchBookmarks]);
 
   const addBookmark = async () => {
     if (!title || !url || !user) return;
