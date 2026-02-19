@@ -16,7 +16,7 @@ A simple, real-time bookmark manager built with Next.js, Supabase, and Tailwind 
 - **Deployment**: Vercel
 
 ## Live Demo
-[View the live app on Vercel](https://smart-bookmark-manager-4xd6g9hyk-varshinis-projects-55052788.vercel.app)
+[View the live app on Vercel](https://smart-bookmark-manager-eight.vercel.app)   
 
 ## Setup (Optional - For Local Development)
 1. Clone the repo: `git clone https://github.com/varshini2814/smart-bookmark-manager.git`
